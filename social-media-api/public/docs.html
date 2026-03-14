@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Media API Documentation</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+  color: #333;
+}
+
+h1, h2, h3 {
+  color: #0066cc;
+}
+
+.endpoint {
+  margin-bottom: 30px;
+  border-bottom: 3px solid #eee;
+  padding-bottom: 20px;
+}
+
+.method {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: white;
+  font-weight: bold;
+}
+
+.get {
+  background-color: #61affe;
+}
+
+.post {
+  background-color: #49cc90;
+}
+
+.put {
+  background-color: #fca130;
+}
+
+.delete {
+  background-color: #f93e3e;
+}
+
+.url {
+  margin-left: 10px;
+  font-family: monospace;
+  font-size: 1.1em;
+}
+
+pre {
+  background-color: #f5f5f5;
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background-color: #f2f2f2;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Social Media API Documentation</h1>
+<p>This is the documentation for the Social Media API, a RESTful API for a platform.</p>
+
+<h2>Users</h2>
+
+<div class="endpoint">
+<span class="method get">GET</span>
+<span class="url">/api/users</span>
+<p>List of all users with pagination.</p>
+
+<h3>Query Parameters</h3>
+
+<table>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+
+<tr>
+<td>page</td>
+<td>Number</td>
+<td>Page number (default: 1)</td>
+</tr>
+
+<tr>
+<td>limit</td>
+<td>Number</td>
+<td>Number of users per page (default: 10)</td>
+</tr>
+</table>
+
+<h3>Response</h3>
+
+<pre>
+{
+ "success": true,
+ "count": 2,
+ "page": 1,
+ "total_pages": 2,
+ "pagination": {
+   "next": {
+     "page": 2,
+     "limit": 10
+   }
+ },
+ "data": [
+   {
+     "id": "1",
+     "username": "traveler",
+     "full_name": "Karma",
+     "profile_picture": "https://example.com/profiles/traveler.jpg",
+     "bio": "Travel photographer",
+     "created_at": "2023-01-15"
+   }
+ ]
+}
+</pre>
+
+</div>
+
+
+<div class="endpoint">
+
+<span class="method get">GET</span>
+<span class="url">/api/users/:id</span>
+<p>Get a user by ID.</p>
+
+<h3>Parameters</h3>
+
+<table>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+
+<tr>
+<td>id</td>
+<td>String</td>
+<td>User ID</td>
+</tr>
+</table>
+
+<h3>Response</h3>
+
+<pre>
+{
+ "success": true,
+ "data": {
+   "id": "1",
+   "username": "Karma",
+   "full_name": "Karma",
+   "profile_picture": "https://example.com/profiles/traveler.jpg",
+   "bio": "Travel photographer",
+   "created_at": "2023-01-15"
+ }
+}
+</pre>
+
+</div>
+
+
+<div class="endpoint">
+
+<span class="method post">POST</span>
+<span class="url">/api/users</span>
+
+<p>Create a new user</p>
+
+<h3>Request Body</h3>
+
+<pre>
+{
+ "username": "new_traveler",
+ "email": "new@example.com",
+ "password": "securepassword",
+ "full_name": "New Traveler",
+ "bio": "Adventure seeker"
+}
+</pre>
+
+<h3>Response</h3>
+
+<pre>
+{
+ "success": true,
+ "data": {
+   "id": "4",
+   "username": "new_traveler",
+   "full_name": "New Traveler",
+   "email": "new@example.com",
+   "profile_picture": "default_profile.jpg",
+   "bio": "Adventure seeker",
+   "created_at": "2023-03-20"
+ }
+}
+</pre>
+
+</div>
+
+
+<!-- Continue with PUT and DELETE endpoints for users -->
+<!-- Then add endpoints for posts, comments, likes, followers -->
+
+</body>
+</html>
