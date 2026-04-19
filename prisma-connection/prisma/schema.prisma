@@ -1,0 +1,16 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model students {
+  id    Int     @id @default(autoincrement())
+  name  String? @db.VarChar(100)
+  age   Int?
+  grade String? @db.VarChar(10)
+  major String? @db.VarChar(100)
+}

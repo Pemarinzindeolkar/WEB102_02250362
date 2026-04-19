@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  email        String        @unique
+  password     String
+  name         String?
+  bio          String?
+  avatar       String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
+  commentLikes CommentLike[]
+  comments     Comment[]
+  following    Follow[]      @relation("follower")
+  followedBy   Follow[]      @relation("following")
+  videoLikes   VideoLike[]
+  videos       Video[]
+
+  @@map("users")
+}
+
+model Video {
+  id                  Int         @id @default(autoincrement())
+  userId              Int         @map("user_id")
+  caption             String?
+  videoUrl            String      @map("video_url")
+  thumbnailUrl        String?     @map("thumbnail_url")
+  audioName           String?     @map("audio_name")
+  videoStoragePath    String?     @map("video_storage_path")
+  thumbnailStoragePath String?    @map("thumbnail_storage_path")
+  views               Int         @default(0)
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at")
+  comments            Comment[]
+  likes               VideoLike[]
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("videos")
+}
+
+model Comment {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @map("user_id")
+  videoId   Int           @map("video_id")
+  content   String
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at")
+  likes     CommentLike[]
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model VideoLike {
+  userId    Int      @map("user_id")
+  videoId   Int      @map("video_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId])
+  @@map("video_likes")
+}
+
+model CommentLike {
+  userId    Int      @map("user_id")
+  commentId Int      @map("comment_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, commentId])
+  @@map("comment_likes")
+}
+
+model Follow {
+  followerId  Int      @map("follower_id")
+  followingId Int      @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@map("follows")
+}

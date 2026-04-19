@@ -1,14 +1,44 @@
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
-const client = new Client({
-  user: 'pema',
+// Create a connection pool - ADJUST YOUR CREDENTIALS AS NEEDED
+const pool = new Pool({
+  user: 'pema', // Default PostgreSQL user (adjust if different)
   host: 'localhost',
-  database: 'school',
-  password: '', // leave empty if no password
-  port: 5432,
+  database: 'student_records',
+  password: '', // Add your password if you've set one
+  port: 5432 // Default PostgreSQL port
 });
 
-client.connect()
-  .then(() => console.log("Connected to PostgreSQL ✅"))
-  .catch(err => console.error("Connection error ❌", err))
-  .finally(() => client.end());
+// Test the connection and run a query
+async function testConnection() {
+  let client;
+
+  try {
+    // Get a client from the pool
+    client = await pool.connect();
+    console.log('Connected to PostgreSQL database!');
+
+    // Run a simple query
+    const result = await client.query('SELECT * FROM students');
+
+    // Print the results
+    console.log('Students in database:');
+    console.table(result.rows);
+
+    // Count rows
+    console.log('Total students: ${result.rowCount}');
+
+    // Catch (err) {
+    console.error('Database connection error:', err);
+    } finally {
+    // Release the client back to the pool
+    if (client) client.release();
+
+    // Close the pool
+    await pool.end();
+    console.log('Connection pool closed');
+    }
+  }
+
+  // Run the test
+  testConnection();

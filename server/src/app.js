@@ -2,57 +2,52 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const path = require('path');
+const fs = require('fs');
+
 
 // Import routes
-const videoRoutes = require('./routes/videos');
 const userRoutes = require('./routes/users');
+const videoRoutes = require('./routes/videos');
 const commentRoutes = require('./routes/comments');
 
-// Initialize Express app
+
+
 const app = express();
 
 // Middleware
-app.use(morgan('dev')); // Logging
-app.use(cors()); // Enable CORS for all routes
-app.use(bodyParser.json()); // Parse JSON bodies
-app.use(bodyParser.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(cors());
+app.use(morgan('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
-app.use((req, res, next) => {
-  // Check if client accepts JSON
-  if (!req.accepts('application/json')) {
-    return res.status(406).json({
-      error: 'Not Acceptable',
-      message: 'This API only supports application/json'
-    });
-  }
-
-  // Set Content-Type header for responses
-  res.setHeader('Content-Type', 'application/json');
-
-  next();
-});
-
-// API Routes
-app.use('/api/videos', videoRoutes);
+// Routes
 app.use('/api/users', userRoutes);
+app.use('/api/videos', videoRoutes);
 app.use('/api/comments', commentRoutes);
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to TikTok API' });
-});
+// Serve files from uploads directory
+app.use('/uploads', express.static(uploadsDir));
 
-// 404 handler
+
+// Error handling middleware
 app.use((req, res, next) => {
-  res.status(404).json({ error: 'Not Found' });
+  const error = new Error('Not Found');
+  error.status = 404;
+  next(error);
 });
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+app.use((error, req, res, next) => {
+  res.status(error.status || 500);
+  res.json({
+    error: {
+      message: error.message
+    }
   });
 });
 

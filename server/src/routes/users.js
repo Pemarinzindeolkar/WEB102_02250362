@@ -2,31 +2,40 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 
-// GET /api/users - Get all users
+// Debug
+console.log('userController:', userController);
+
+// GET all users
 router.get('/', userController.getAllUsers);
 
-// POST /api/users - Create new user
-router.post('/', userController.createUser);
+// REGISTER user (FIXED)
+router.post('/register', userController.registerUser);
 
-// GET /api/users/:id - Get user by ID
+// LOGIN user (ADDED)
+router.post('/login', userController.loginUser);
+
+// GET user by ID
 router.get('/:id', userController.getUserById);
 
-// PUT /api/users/:id - Update user
+// UPDATE user
 router.put('/:id', userController.updateUser);
 
-// DELETE /api/users/:id - Delete user
+// DELETE user
 router.delete('/:id', userController.deleteUser);
 
-// GET /api/users/:id/videos - Get user videos
+// GET user videos
 router.get('/:id/videos', userController.getUserVideos);
 
-// GET /api/users/:id/followers - Get followers
+// GET followers
 router.get('/:id/followers', userController.getUserFollowers);
 
-// POST /api/users/:id/followers - Follow user
-router.post('/:id/followers', userController.followUser);
+// GET following (you are missing this controller route, optional)
+router.get('/:id/following', userController.getUserFollowing);
 
-// DELETE /api/users/:id/followers - Unfollow user
-router.delete('/:id/followers', userController.unfollowUser);
+// FOLLOW user
+router.post('/:id/follow', userController.followUser);
+
+// UNFOLLOW user
+router.delete('/:id/follow', userController.unfollowUser);
 
 module.exports = router;
