@@ -1,22 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const { protect } = require('../middleware/auth');
 
-// Public routes (no authentication needed)
-router.post('/register', userController.registerUser);
-router.post('/login', userController.loginUser);
+// GET /api/users - Get all users
 router.get('/', userController.getAllUsers);
-router.get('/:id', userController.getUserById);
-router.get('/:id/videos', userController.getUserVideos);
-router.get('/:id/followers', userController.getUserFollowers);
-router.get('/:id/following', userController.getUserFollowing);
 
-// Protected routes (require authentication)
-router.get('/me', protect, userController.getCurrentUser);
-router.put('/:id', protect, userController.updateUser);
-router.delete('/:id', protect, userController.deleteUser);
-router.post('/:id/follow', protect, userController.followUser);
-router.delete('/:id/follow', protect, userController.unfollowUser);
+// POST /api/users - Create new user
+router.post('/', userController.createUser);
+
+// GET /api/users/:id - Get user by ID
+router.get('/:id', userController.getUserById);
+
+// PUT /api/users/:id - Update user
+router.put('/:id', userController.updateUser);
+
+// DELETE /api/users/:id - Delete user
+router.delete('/:id', userController.deleteUser);
+
+// GET /api/users/:id/videos - Get user videos
+router.get('/:id/videos', userController.getUserVideos);
+
+// GET /api/users/:id/followers - Get followers
+router.get('/:id/followers', userController.getUserFollowers);
+
+// POST /api/users/:id/followers - Follow user
+router.post('/:id/followers', userController.followUser);
+
+// DELETE /api/users/:id/followers - Unfollow user
+router.delete('/:id/followers', userController.unfollowUser);
 
 module.exports = router;
