@@ -5,12 +5,11 @@ const jwt = require('jsonwebtoken');
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await prisma.user.findMany({
+    const users = await prisma.User.findMany({
       select: {
         id: true,
         username: true,
         email: true,
-        name: true,
         bio: true,
         avatar: true,
         createdAt: true,
@@ -31,18 +30,51 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get user by ID
-exports.getUserById = async (req, res) => {
+// Get current user from token (FIXED)
+exports.getCurrentUser = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(id) },
+    // User is already attached to req by the protect middleware
+    const user = await prisma.User.findUnique({
+      where: { id: req.user.id },
       select: {
         id: true,
         username: true,
         email: true,
-        name: true,
+        bio: true,
+        avatar: true,
+        createdAt: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get user by ID (FIXED - handles ID parameter correctly)
+exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Convert id to integer
+    const userId = parseInt(id);
+    
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const user = await prisma.User.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
         bio: true,
         avatar: true,
         createdAt: true,
@@ -72,7 +104,7 @@ exports.registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    const userExists = await prisma.user.findFirst({
+    const userExists = await prisma.User.findFirst({
       where: {
         OR: [{ email }, { username }]
       }
@@ -80,16 +112,13 @@ exports.registerUser = async (req, res) => {
 
     if (userExists) {
       return res.status(400).json({
-        message:
-          userExists.email === email
-            ? 'Email already in use'
-            : 'Username already in use'
+        message: userExists.email === email ? 'Email already in use' : 'Username already in use'
       });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
+    const newUser = await prisma.User.create({
       data: {
         username,
         email,
@@ -97,11 +126,20 @@ exports.registerUser = async (req, res) => {
       }
     });
 
-    const { password: _, ...userWithoutPassword } = newUser;
+    const token = jwt.sign(
+      { id: newUser.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
 
     res.status(201).json({
       message: 'User registered successfully',
-      user: userWithoutPassword
+      token,
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email
+      }
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -114,7 +152,7 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { email }
     });
 
@@ -134,27 +172,35 @@ exports.loginUser = async (req, res) => {
       { expiresIn: '30d' }
     );
 
-    const { password: _, ...userWithoutPassword } = user;
-
-    return res.status(200).json({
+    res.status(200).json({
       token,
-      user: userWithoutPassword
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
-    return res.status(500).json({ message: 'Server error during login' });
+    res.status(500).json({ message: 'Server error during login' });
   }
 };
 
-// Get user videos (FIXED)
+// Get user videos
 exports.getUserVideos = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = parseInt(id);
+    
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
     const { cursor, limit = 10 } = req.query;
     const limitNum = parseInt(limit) || 10;
 
-    const userExists = await prisma.user.findUnique({
-      where: { id: parseInt(id) }
+    const userExists = await prisma.User.findUnique({
+      where: { id: userId }
     });
 
     if (!userExists) {
@@ -162,11 +208,17 @@ exports.getUserVideos = async (req, res) => {
     }
 
     const queryOptions = {
-      where: { userId: parseInt(id) },
+      where: { userId: userId },
       take: limitNum + 1,
       orderBy: { createdAt: 'desc' },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true
+          }
+        },
         _count: {
           select: {
             likes: true,
@@ -193,10 +245,7 @@ exports.getUserVideos = async (req, res) => {
       _count: undefined
     }));
 
-    const nextCursor =
-      hasNextPage
-        ? formattedVideos[formattedVideos.length - 1].id.toString()
-        : null;
+    const nextCursor = hasNextPage ? formattedVideos[formattedVideos.length - 1].id.toString() : null;
 
     res.status(200).json({
       videos: formattedVideos,
@@ -215,22 +264,14 @@ exports.getUserVideos = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const { username, email, bio } = req.body;
 
-    const { name, bio } = req.body;
-
-    let avatarPath = null;
-
-    if (req.files?.avatar) {
-      const file = req.files.avatar[0];
-      avatarPath = `/uploads/${file.filename}`;
-    }
-
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.User.update({
       where: { id: parseInt(id) },
       data: {
-        ...(name && { name }),
-        ...(bio && { bio }),
-        ...(avatarPath && { avatar: avatarPath })
+        ...(username && { username }),
+        ...(email && { email }),
+        ...(bio && { bio })
       }
     });
 
@@ -248,7 +289,7 @@ exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await prisma.user.delete({
+    await prisma.User.delete({
       where: { id: parseInt(id) }
     });
 

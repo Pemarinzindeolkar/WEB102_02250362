@@ -1,41 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
+const { protect } = require('../middleware/auth');
 
-// Debug
-console.log('userController:', userController);
-
-// GET all users
-router.get('/', userController.getAllUsers);
-
-// REGISTER user (FIXED)
+// Public routes (no authentication needed)
 router.post('/register', userController.registerUser);
-
-// LOGIN user (ADDED)
 router.post('/login', userController.loginUser);
-
-// GET user by ID
+router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserById);
-
-// UPDATE user
-router.put('/:id', userController.updateUser);
-
-// DELETE user
-router.delete('/:id', userController.deleteUser);
-
-// GET user videos
 router.get('/:id/videos', userController.getUserVideos);
-
-// GET followers
 router.get('/:id/followers', userController.getUserFollowers);
-
-// GET following (you are missing this controller route, optional)
 router.get('/:id/following', userController.getUserFollowing);
 
-// FOLLOW user
-router.post('/:id/follow', userController.followUser);
-
-// UNFOLLOW user
-router.delete('/:id/follow', userController.unfollowUser);
+// Protected routes (require authentication)
+router.get('/me', protect, userController.getCurrentUser);
+router.put('/:id', protect, userController.updateUser);
+router.delete('/:id', protect, userController.deleteUser);
+router.post('/:id/follow', protect, userController.followUser);
+router.delete('/:id/follow', protect, userController.unfollowUser);
 
 module.exports = router;

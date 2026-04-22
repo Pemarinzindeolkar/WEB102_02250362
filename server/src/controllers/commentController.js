@@ -1,15 +1,19 @@
 const prisma = require('../lib/prisma');
 
-// Get all comments
-exports.getAllComments = async (req, res) => {
+// Get all comments for a video
+const getAllComments = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { videoId } = req.query;
     const { cursor, limit = 20 } = req.query;
     const limitNum = parseInt(limit) || 20;
     
+    if (!videoId) {
+      return res.status(400).json({ message: 'videoId query parameter is required' });
+    }
+    
     // Check if video exists
-    const videoExists = await prisma.video.findUnique({
-      where: { id: parseInt(id) },
+    const videoExists = await prisma.Video.findUnique({
+      where: { id: parseInt(videoId) },
     });
     
     if (!videoExists) {
@@ -19,11 +23,11 @@ exports.getAllComments = async (req, res) => {
     // Build query options
     const queryOptions = {
       where: {
-        videoId: parseInt(id),
+        videoId: parseInt(videoId),
       },
-      take: limitNum + 1, // Take one extra to determine if there are more items
+      take: limitNum + 1,
       orderBy: {
-        createdAt: 'desc', // Newest comments first
+        createdAt: 'desc',
       },
       include: {
         user: {
@@ -47,36 +51,28 @@ exports.getAllComments = async (req, res) => {
       }
     };
     
-    // If cursor is provided, filter records after the cursor
     if (cursor) {
       queryOptions.cursor = {
         id: parseInt(cursor),
       };
-      queryOptions.skip = 1; // Skip the cursor itself
+      queryOptions.skip = 1;
     }
     
-    // Get comments
-    const comments = await prisma.comment.findMany(queryOptions);
+    const comments = await prisma.Comment.findMany(queryOptions);
     
-    // Check if there are more items
     const hasNextPage = comments.length > limitNum;
     
-    // Remove the extra item we used to check for more data
     if (hasNextPage) {
       comments.pop();
     }
     
-    // If user is logged in, check if they've liked the comments
     if (req.user) {
       const userId = req.user.id;
-      
-      // Add isLiked property to comments
       comments.forEach(comment => {
-        comment.isLiked = comment.likes.some(like => like.userId === userId);
+        comment.isLiked = comment.likes.some(like => like.userId === parseInt(userId));
       });
     }
     
-    // Format comments
     const formattedComments = comments.map(comment => ({
       ...comment,
       likeCount: comment._count.likes,
@@ -84,7 +80,6 @@ exports.getAllComments = async (req, res) => {
       likes: undefined,
     }));
     
-    // Get the next cursor from the last item
     const nextCursor = hasNextPage ? formattedComments[formattedComments.length - 1].id.toString() : null;
     
     res.status(200).json({
@@ -95,17 +90,17 @@ exports.getAllComments = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(`Error getting comments for video ${req.params.id}:`, error);
+    console.error('Error getting comments:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 // Get comment by ID
-exports.getCommentById = async (req, res) => {
+const getCommentById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const comment = await prisma.comment.findUnique({
+    const comment = await prisma.Comment.findUnique({
       where: { id: parseInt(id) },
       include: {
         user: {
@@ -133,11 +128,10 @@ exports.getCommentById = async (req, res) => {
       return res.status(404).json({ message: 'Comment not found' });
     }
     
-    // If user is logged in, check if they've liked the comment
     if (req.user) {
       const userId = req.user.id;
       
-      const like = await prisma.commentLike.findUnique({
+      const like = await prisma.CommentLike.findUnique({
         where: {
           userId_commentId: {
             userId: parseInt(userId),
@@ -157,13 +151,16 @@ exports.getCommentById = async (req, res) => {
 };
 
 // Create comment
-exports.createComment = async (req, res) => {
+const createComment = async (req, res) => {
   try {
     const { videoId, content } = req.body;
     const userId = req.user.id;
     
-    // Check if video exists
-    const video = await prisma.video.findUnique({
+    if (!videoId || !content) {
+      return res.status(400).json({ message: 'videoId and content are required' });
+    }
+    
+    const video = await prisma.Video.findUnique({
       where: { id: parseInt(videoId) }
     });
     
@@ -171,8 +168,7 @@ exports.createComment = async (req, res) => {
       return res.status(404).json({ message: 'Video not found' });
     }
     
-    // Create comment
-    const comment = await prisma.comment.create({
+    const comment = await prisma.Comment.create({
       data: {
         content,
         userId: parseInt(userId),
@@ -198,14 +194,13 @@ exports.createComment = async (req, res) => {
 };
 
 // Update comment
-exports.updateComment = async (req, res) => {
+const updateComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
     const userId = req.user.id;
     
-    // Check if comment exists and belongs to user
-    const comment = await prisma.comment.findUnique({
+    const comment = await prisma.Comment.findUnique({
       where: { id: parseInt(id) }
     });
     
@@ -217,8 +212,7 @@ exports.updateComment = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this comment' });
     }
     
-    // Update comment
-    const updatedComment = await prisma.comment.update({
+    const updatedComment = await prisma.Comment.update({
       where: { id: parseInt(id) },
       data: {
         content,
@@ -244,13 +238,12 @@ exports.updateComment = async (req, res) => {
 };
 
 // Delete comment
-exports.deleteComment = async (req, res) => {
+const deleteComment = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
     
-    // Check if comment exists
-    const comment = await prisma.comment.findUnique({
+    const comment = await prisma.Comment.findUnique({
       where: { id: parseInt(id) },
       include: {
         video: {
@@ -263,13 +256,11 @@ exports.deleteComment = async (req, res) => {
       return res.status(404).json({ message: 'Comment not found' });
     }
     
-    // Check if user is authorized to delete (comment owner or video owner)
     if (comment.userId !== parseInt(userId) && comment.video.userId !== parseInt(userId)) {
       return res.status(403).json({ message: 'Not authorized to delete this comment' });
     }
     
-    // Delete comment
-    await prisma.comment.delete({
+    await prisma.Comment.delete({
       where: { id: parseInt(id) }
     });
     
@@ -280,14 +271,13 @@ exports.deleteComment = async (req, res) => {
   }
 };
 
-// Like/unlike comment
-exports.toggleCommentLike = async (req, res) => {
+// Like comment
+const likeComment = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
     
-    // Check if comment exists
-    const comment = await prisma.comment.findUnique({
+    const comment = await prisma.Comment.findUnique({
       where: { id: parseInt(id) }
     });
     
@@ -295,8 +285,7 @@ exports.toggleCommentLike = async (req, res) => {
       return res.status(404).json({ message: 'Comment not found' });
     }
     
-    // Check if like already exists
-    const existingLike = await prisma.commentLike.findUnique({
+    const existingLike = await prisma.CommentLike.findUnique({
       where: {
         userId_commentId: {
           userId: parseInt(userId),
@@ -305,51 +294,74 @@ exports.toggleCommentLike = async (req, res) => {
       }
     });
     
-    let action;
-    
     if (existingLike) {
-      // Unlike - delete the like
-      await prisma.commentLike.delete({
-        where: {
-          userId_commentId: {
-            userId: parseInt(userId),
-            commentId: parseInt(id)
-          }
-        }
-      });
-      action = 'unliked';
-    } else {
-      // Like - create a like
-      await prisma.commentLike.create({
-        data: {
-          userId: parseInt(userId),
-          commentId: parseInt(id)
-        }
-      });
-      action = 'liked';
+      return res.status(400).json({ message: 'Comment already liked' });
     }
     
-    // Get updated like count
-    const likeCount = await prisma.commentLike.count({
+    await prisma.CommentLike.create({
+      data: {
+        userId: parseInt(userId),
+        commentId: parseInt(id)
+      }
+    });
+    
+    const likeCount = await prisma.CommentLike.count({
       where: { commentId: parseInt(id) }
     });
     
     res.status(200).json({
-      message: `Comment ${action} successfully`,
-      action,
+      message: 'Comment liked successfully',
+      action: 'liked',
       likeCount
     });
   } catch (error) {
-    console.error(`Error toggling like for comment ${req.params.id}:`, error);
-    res.status(500).json({ message: 'Failed to toggle like' });
+    console.error(`Error liking comment ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Failed to like comment' });
+  }
+};
+
+// Unlike comment
+const unlikeComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    
+    const comment = await prisma.Comment.findUnique({
+      where: { id: parseInt(id) }
+    });
+    
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+    
+    await prisma.CommentLike.deleteMany({
+      where: {
+        userId: parseInt(userId),
+        commentId: parseInt(id)
+      }
+    });
+    
+    const likeCount = await prisma.CommentLike.count({
+      where: { commentId: parseInt(id) }
+    });
+    
+    res.status(200).json({
+      message: 'Comment unliked successfully',
+      action: 'unliked',
+      likeCount
+    });
+  } catch (error) {
+    console.error(`Error unliking comment ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Failed to unlike comment' });
   }
 };
 
 module.exports = {
-  getAllComments: exports.getAllComments,
-  getCommentById: exports.getCommentById,
-  createComment: exports.createComment,
-  updateComment: exports.updateComment,
-  deleteComment: exports.deleteComment,
-  toggleCommentLike: exports.toggleCommentLike
+  getAllComments,
+  getCommentById,
+  createComment,
+  updateComment,
+  deleteComment,
+  likeComment,
+  unlikeComment,
 };
