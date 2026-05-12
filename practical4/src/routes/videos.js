@@ -1,33 +1,27 @@
 const express = require('express');
 const router = express.Router();
+const videoController = require('../controllers/videoController');
 const { protect } = require('../middleware/auth');
-const { uploadVideoWithThumbnail } = require('../middleware/upload');
-const {
-  getAllVideos,
-  getVideoById,
-  createVideo,
-  deleteVideo,
-  likeVideo
-} = require('../controllers/videoController');
+const { upload } = require('../middleware/upload');
 
-// Test route - MUST be before /:id route
-router.get('/test', (req, res) => {
-  res.json({ message: 'Videos route is working!', timestamp: new Date() });
-});
+// Public routes
+router.get('/following', protect, videoController.getFollowingVideos);
 
-// Get all videos
-router.get('/', getAllVideos);
+router.get('/', videoController.getAllVideos);
+router.get('/:id', videoController.getVideoById);
+router.get('/:id/comments', videoController.getVideoComments);
 
-// Get single video (this will match any route with a parameter)
-router.get('/:id', getVideoById);
+// Protected routes 
+router.post('/', protect, upload.fields([
+  { name: 'video', maxCount: 1 }, 
+  { name: 'thumbnail', maxCount: 1 }
+]), videoController.createVideo);
 
-// Upload video
-router.post('/', protect, uploadVideoWithThumbnail, createVideo);
+router.put('/:id', protect, videoController.updateVideo);
+router.delete('/:id', protect, videoController.deleteVideo);
 
-// Like/Unlike video
-router.post('/:id/like', protect, likeVideo);
-
-// Delete video
-router.delete('/:id', protect, deleteVideo);
+// Like/unlike video
+router.post('/:id/like', protect, videoController.toggleVideoLike);
+router.delete('/:id/like', protect, videoController.toggleVideoLike);
 
 module.exports = router;
